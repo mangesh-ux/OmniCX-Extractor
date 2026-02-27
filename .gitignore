@@ -1,0 +1,21 @@
+# Secrets
+.env
+openai_api_key.txt
+
+# Data / local
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
