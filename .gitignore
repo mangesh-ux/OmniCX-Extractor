@@ -5,6 +5,10 @@ openai_api_key.txt
 # Data / local
 data/
 
+# Training artifacts
+outputs/
+models/
+
 # Python
 __pycache__/
 *.py[cod]

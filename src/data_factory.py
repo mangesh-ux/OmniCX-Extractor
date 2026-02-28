@@ -44,14 +44,14 @@ customer_personas = [
 
 # [Customer Intent] + [Underlying Operational Reality]
 logistics_scenarios = [
-    "Intent: WISMO (Where is my order) | Reality: DEX08 (Recipient Not In/Business Closed)",
-    "Intent: WISMO (Where is my order) | Reality: STAT50 (Customs Hold/Missing Commercial Invoice)",
-    "Intent: Address Modification | Reality: PUX24 (Customer Delay - Package already on truck, cannot intercept)",
-    "Intent: Proof of Delivery Dispute | Reality: DEX04 (Delivered to Address Other than Recipient / Misdelivered)",
-    "Intent: Damage Claim Initiation | Reality: STAT37 (Observed Package Damage at Hub prior to delivery)",
-    "Intent: Delivery Scheduling | Reality: HAL (Hold at Location successfully processed)",
-    "Intent: Lost in Transit Investigation | Reality: MIS (Missort routing loop between two hubs)",
-    "Intent: WISMO (Where is my order) | Reality: STAT84 (Weather/Force Majeure Delay)",
+    "Intent: WISMO (Where is my order) | Reality: (Recipient Not In/Business Closed)",
+    "Intent: WISMO (Where is my order) | Reality: (Customs Hold/Missing Commercial Invoice)",
+    "Intent: Address Modification | Reality: (Customer Delay - Package already on truck, cannot intercept)",
+    "Intent: Proof of Delivery Dispute | Reality: (Delivered to Address Other than Recipient / Misdelivered)",
+    "Intent: Damage Claim Initiation | Reality: (Observed Package Damage at Hub prior to delivery)",
+    "Intent: Delivery Scheduling | Reality: (Hold at Location successfully processed)",
+    "Intent: Lost in Transit Investigation | Reality: (Missort routing loop between two hubs)",
+    "Intent: WISMO (Where is my order) | Reality: (Weather/Force Majeure Delay)",
 ]
 
 # ---------------------------------------------------------------------------
