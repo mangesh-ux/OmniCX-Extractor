@@ -13,6 +13,7 @@ Usage (from repo root):
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -99,7 +100,7 @@ def compare_one(gold: dict, pred: dict) -> dict:
     return out
 
 
-def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path = None, results_json_path: Path = None) -> dict:
+def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path = None, results_json_path: Path = None, outputs_path: Path = None) -> dict:
     """Load eval JSONL, run model, compare, write report. Returns summary stats."""
     from inference import load_model, extract_with_finetuned
 
@@ -119,16 +120,19 @@ def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path =
     results = []
     for row in rows:
         transcript, gold = get_transcript_and_gold(row)
+        t0 = time.perf_counter()
         try:
             pred = extract_with_finetuned(transcript, model=model, tokenizer=tokenizer, return_dict=True)
+            latency_sec = time.perf_counter() - t0
         except Exception as e:
-            pred = None
+            latency_sec = time.perf_counter() - t0
             results.append({
                 "line_num": row["line_num"],
                 "gold": gold,
                 "pred": None,
                 "error": str(e),
                 "match": None,
+                "latency_sec": latency_sec,
             })
             continue
         match = compare_one(gold, pred)
@@ -137,6 +141,7 @@ def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path =
             "gold": gold,
             "pred": pred,
             "match": match,
+            "latency_sec": latency_sec,
         })
 
     # Aggregate
@@ -155,13 +160,23 @@ def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path =
             correct["strict"] += 1
 
     total = len(results)
+    latencies = [r["latency_sec"] for r in results]
     summary = {
         "total": total,
         "valid": valid,
         "errors": total - valid,
         "per_field_accuracy": {k: (correct[k] / valid if valid else 0) for k in key_fields},
         "strict_accuracy": correct["strict"] / valid if valid else 0,
+        "latency_sec": {
+            "mean": sum(latencies) / len(latencies) if latencies else 0,
+            "min": min(latencies) if latencies else 0,
+            "max": max(latencies) if latencies else 0,
+            "total": sum(latencies),
+        },
     }
+    # Log latency to console
+    lat = summary["latency_sec"]
+    print(f"Latency: mean={lat['mean']:.2f}s, min={lat['min']:.2f}s, max={lat['max']:.2f}s, total={lat['total']:.2f}s")
 
     # Report path
     report_path = report_path or REPO_ROOT / "docs" / "training_logs" / "eval_report_iteration_001.md"
@@ -181,6 +196,9 @@ def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path =
         "| Metric | Value |",
         "|--------|--------|",
         f"| Strict accuracy (all key fields match) | {summary['strict_accuracy']:.1%} ({correct['strict']}/{valid}) |",
+        f"| Latency (mean) | {summary['latency_sec']['mean']:.2f}s |",
+        f"| Latency (min / max) | {summary['latency_sec']['min']:.2f}s / {summary['latency_sec']['max']:.2f}s |",
+        f"| Latency (total) | {summary['latency_sec']['total']:.2f}s |",
         "",
         "## Per-field accuracy",
         "",
@@ -214,7 +232,7 @@ def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path =
     if results_json_path:
         results_json_path = Path(results_json_path)
         results_json_path.parent.mkdir(parents=True, exist_ok=True)
-        # Serialize for JSON (no numpy)
+        # Serialize for JSON (no numpy); include full pred and latency
         out_json = {
             "summary": summary,
             "results": [
@@ -222,7 +240,10 @@ def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path =
                     "line_num": r["line_num"],
                     "strict_match": r.get("match", {}).get("strict") if r.get("match") else None,
                     "match": r.get("match"),
+                    "pred": r.get("pred"),
+                    "gold": r.get("gold"),
                     "error": r.get("error"),
+                    "latency_sec": r.get("latency_sec"),
                 }
                 for r in results
             ],
@@ -231,6 +252,23 @@ def run_evaluation(eval_path: Path, model_path: Path = None, report_path: Path =
             json.dump(out_json, f, indent=2)
         print(f"Results JSON written to {results_json_path}")
 
+    # Save model outputs to a JSONL (one line per example: pred + latency)
+    if outputs_path:
+        outputs_path = Path(outputs_path)
+        outputs_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(outputs_path, "w", encoding="utf-8") as f:
+            for r in results:
+                rec = {
+                    "line_num": r["line_num"],
+                    "pred": r.get("pred"),
+                    "gold": r.get("gold"),
+                    "latency_sec": r.get("latency_sec"),
+                    "strict_match": r.get("match", {}).get("strict") if r.get("match") else None,
+                    "error": r.get("error"),
+                }
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        print(f"Model outputs written to {outputs_path}")
+
     return summary
 
 
@@ -238,7 +276,8 @@ def main():
     p = argparse.ArgumentParser(description="Evaluate finetuned logistics CX model on a ChatML JSONL.")
     p.add_argument("--eval-file", type=Path, default=REPO_ROOT / "data" / "eval" / "eval_dataset.jsonl", help="Path to eval JSONL")
     p.add_argument("--report", type=Path, default=None, help="Output markdown report path")
-    p.add_argument("--results-json", type=Path, default=None, help="Optional: output detailed results JSON")
+    p.add_argument("--results-json", type=Path, default=None, help="Optional: output detailed results JSON (includes pred + latency)")
+    p.add_argument("--outputs", type=Path, default=REPO_ROOT / "docs" / "training_logs" / "eval_outputs_iteration_001.jsonl", help="Save model outputs to JSONL (pred, gold, latency per line)")
     p.add_argument("--model-path", type=Path, default=None, help="Path to LoRA adapter (default: models/qwen-logistics-lora)")
     args = p.parse_args()
     run_evaluation(
@@ -246,6 +285,7 @@ def main():
         model_path=args.model_path,
         report_path=args.report,
         results_json_path=args.results_json,
+        outputs_path=args.outputs,
     )
 
 
