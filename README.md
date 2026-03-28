@@ -1,68 +1,89 @@
 # OmniCX Extractor
 
-Structured logistics + customer-experience intelligence from raw support conversations.
+Structured logistics and customer-experience intelligence from raw support conversations.
 
-OmniCX Extractor fine-tunes `Qwen/Qwen2.5-3B-Instruct` with QLoRA (Unsloth) to convert multi-turn support transcripts into a strict, analytics-ready JSON schema (`LogisticsCXMetrics`).
+OmniCX Extractor fine-tunes `Qwen/Qwen2.5-3B-Instruct` (QLoRA + Unsloth) to convert multi-turn chat/call/email-style transcripts into a strict JSON schema (`LogisticsCXMetrics`) for downstream analytics.
 
 ## Why This Project Exists
 
-Logistics support transcripts contain both:
-- **Behavioral CX signals** (friction, effort, escalation, sentiment shift)
-- **Operational failure signals** (delivery exceptions, root-cause category, resolution state)
+Logistics support interactions contain both:
+- **Behavioral CX signals** (effort, friction, sentiment trajectory, escalation)
+- **Operational signals** (delivery exceptions, root cause category, resolution state)
 
-Most pipelines capture one side and miss the other. OmniCX Extractor is built to capture both in a single pass.
+Most pipelines optimize for one side. OmniCX Extractor is built to capture both in a single structured output.
 
-## What You Get
+## What Is Shipped
 
-- **Schema-first extraction** with deterministic structure in `src/schema.py`
-- **Fine-tuned local model** in `models/qwen-logistics-lora/`
-- **Evaluation pipeline** with per-field accuracy, strict accuracy, and latency metrics
-- **Per-example outputs** (prediction + gold + latency) for auditing
-- **Local API server** for integration testing (`/extract`)
+- Schema-first extraction in `src/schema.py`
+- Fine-tuning pipeline in `src/train.py`
+- Inference utilities + local API (`src/inference.py`, `src/serve_inference.py`)
+- Evaluation pipeline with per-field metrics, strict match, and latency (`scripts/run_evaluation.py`)
+- Dataset/model release utilities for Hugging Face (`scripts/prepare_hf_release.py`, `scripts/publish_hf_artifacts.py`)
 
-## Current Snapshot (Iteration 001)
+## Current Status (Iteration 001)
 
 - **Base model:** `Qwen/Qwen2.5-3B-Instruct`
-- **Fine-tuning:** QLoRA (4-bit) with Unsloth
-- **Training set:** `486` examples
-- **Eval set:** `32` examples (cleaned and parse-valid)
-- **Strict accuracy:** `0.0%` (0/32)
-- **Latency (mean):** `22.35s` per example
+- **Finetuning:** QLoRA (4-bit) via Unsloth
+- **Training samples:** 486
+- **Eval samples:** 32 (cleaned, parse-valid)
+- **Strict exact-match accuracy:** 0.0% (0/32)
+- **Mean latency:** 22.35s per example
 
-Detailed logs:
+Detailed artifacts:
 - `docs/training_logs/iteration_001.md`
 - `docs/training_logs/eval_report_iteration_001.md`
 - `docs/training_logs/eval_outputs_iteration_001.jsonl`
+
+## Published Artifact
+
+- Hugging Face dataset (research preview): [mangesh-ux/logistics-cx-transcript-analysis-chatml](https://huggingface.co/datasets/mangesh-ux/logistics-cx-transcript-analysis-chatml)
+
+## Knowledge-Grounded Schema
+
+Output fields and taxonomies are grounded in the research/source docs in `docs/knowledge/`, including:
+- `Transcript-Only CX Difficulty Score_ Standards, Methods, and a Rigorous MVP Design.pdf`
+- `Logistics CX Data Schema Development.docx`
+
+These are mapped into `LogisticsCXMetrics` and enforced during data prep, training, and evaluation.
+
+Canonical taxonomy and rubric spec:
+- `docs/taxonomy.md`
 
 ## Repository Layout
 
 ```text
 OmniCX-Extractor/
   src/
-    schema.py                # Core extraction schema (LogisticsCXMetrics)
-    train.py                 # QLoRA fine-tuning script
-    inference.py             # Local inference utilities
-    serve_inference.py       # Flask server for /extract
-    data_factory.py          # Synthetic data generation pipeline
-  data/
-    raw/
-    processed/               # Golden training JSONL files
-    eval/                    # Eval dataset JSONL
+    schema.py
+    train.py
+    inference.py
+    serve_inference.py
+    data_factory.py
   scripts/
-    run_evaluation.py        # Accuracy + latency + outputs reporting
+    run_evaluation.py
     fix_eval_jsonl.py
     filter_valid_eval_lines.py
-    plot_iteration_001_loss.py
+    prepare_hf_release.py
+    publish_hf_artifacts.py
+    upload_dataset_hf.py
   docs/
     eval/
+    hf/
+    knowledge/
     training_logs/
+  data/
+    processed/
+    eval/
   models/
-    qwen-logistics-lora/     # Trained adapter artifacts
+    qwen-logistics-lora/
+  hf_release/
+    dataset/
+    model/
 ```
 
 ## Data Format (ChatML JSONL)
 
-Each line is one training/eval example:
+Each line is one sample:
 
 ```json
 {
@@ -87,19 +108,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-If you plan to train/infer locally, also install your GPU stack and training deps (`torch`, `transformers`, `trl`, `datasets`, `peft`, `unsloth`, etc.) that match your CUDA setup.
+For GPU training, use the environment where CUDA-enabled PyTorch and Unsloth are installed (WSL + conda recommended for this project).
 
-### 2) Train (optional)
+### 2) Train
 
 ```bash
 python src/train.py
 ```
 
-Outputs are saved to:
-- `outputs/`
-- `models/qwen-logistics-lora/`
-
-### 3) Run evaluation
+### 3) Evaluate
 
 ```bash
 python scripts/run_evaluation.py \
@@ -109,16 +126,76 @@ python scripts/run_evaluation.py \
   --outputs docs/training_logs/eval_outputs_iteration_001.jsonl
 ```
 
-### 4) Serve local API
+### 4) Serve locally
 
 ```bash
 python src/serve_inference.py
 ```
 
-Test:
+Test request:
 
 ```bash
 curl -X POST http://localhost:8000/extract \
   -H "Content-Type: application/json" \
   -d "{\"transcript\":\"Agent: Hi. Customer: Where is my order?\"}"
 ```
+
+## End-User Input and Output
+
+### Input contract
+
+Minimum request payload:
+
+```json
+{
+  "transcript": "Agent: ... Customer: ..."
+}
+```
+
+Optional payload with prompt override:
+
+```json
+{
+  "transcript": "Agent: ... Customer: ...",
+  "system_prompt": "You are a logistics analyst. Extract metrics."
+}
+```
+
+### Output contract
+
+Service returns structured JSON with three top-level groups:
+
+```json
+{
+  "behavioral_analytics": {
+    "customer_intent": "WISMO_Standard",
+    "customer_effort_score": 2
+  },
+  "operational_analytics": {
+    "delivery_exception_type": "Unknown / Not Explicitly Stated",
+    "root_cause_category": "Unknown / Not Applicable",
+    "agent_explicitly_confirmed_resolution": true
+  },
+  "diagnostic_reasoning": {
+    "recommended_routing_queue": "Tier 1 Support"
+  }
+}
+```
+
+For complete field definitions and enums, see `src/schema.py`.
+
+## Release Workflow (Hugging Face)
+
+```bash
+python scripts/prepare_hf_release.py
+python scripts/upload_dataset_hf.py --repo mangesh-ux/logistics-cx-transcript-analysis-chatml
+# or publish both dataset + model:
+# python scripts/publish_hf_artifacts.py --dataset-repo ... --model-repo ...
+```
+
+## Roadmap (Near-Term)
+
+- Improve strict schema-level accuracy with more diverse labeled samples
+- Expand data sources/personas/channels and rebalance difficult edge-cases
+- Publish model artifact and versioned changelog (`v0.1.x` -> `v0.2.0`)
+- Add deeper benchmark reporting (segment-level and robustness slices)

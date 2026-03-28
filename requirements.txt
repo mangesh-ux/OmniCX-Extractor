@@ -2,3 +2,4 @@ openai
 dotenv
 tqdm
 flask
+huggingface_hub
