@@ -64,6 +64,9 @@ Project repository: [OmniCX-Extractor](https://github.com/mangesh-ux/OmniCX-Extr
 - Sample size (iteration shown): 486 examples
 - Data format: ChatML-style messages with assistant JSON labels
 - Label space source: `docs/knowledge/` references (field/taxonomy source), mapped to `LogisticsCXMetrics`
+- Synthetic data pipeline model usage:
+  - Transcript generation: `gpt-4o-mini` (`src/data_factory.py`)
+  - Schema-constrained labeling: `gpt-4o-mini` (`src/extractor.py`)
 
 ## Training Procedure
 

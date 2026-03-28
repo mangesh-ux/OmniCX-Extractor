@@ -122,3 +122,11 @@ Taxonomy design is informed by:
 - `docs/knowledge/Logistics CX Data Schema Development.docx`
 
 Canonical code-level enforcement remains in `src/schema.py`.
+
+## Synthetic Data Generation Model Provenance
+
+For the synthetic data pipeline in this repository:
+- Transcript generation model: `gpt-4o-mini` (implemented in `src/data_factory.py`)
+- Schema-constrained labeling model: `gpt-4o-mini` (implemented in `src/extractor.py`)
+
+If generation/labeling models are changed in future iterations, update this section and corresponding cards for reproducibility.

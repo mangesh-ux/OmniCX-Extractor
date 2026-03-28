@@ -48,6 +48,15 @@ This release is a **research preview** and should not be treated as a production
 
 Project repository: [OmniCX-Extractor](https://github.com/mangesh-ux/OmniCX-Extractor)
 
+### Taxonomy Summary
+
+`LogisticsCXMetrics` contains three top-level groups:
+- **`behavioral_analytics`**: intent, effort (`1-5` CES-like rubric), sentiment trajectory, rework frequency, and friction evidence quotes.
+- **`operational_analytics`**: exception diagnosis, controlled exception/root-cause categories, deterministic boolean flags, and resolution tracking.
+- **`diagnostic_reasoning`**: auditable reasoning fields (`intent_reasoning`, `exception_reasoning`, `effort_reasoning`) plus routing recommendation.
+
+Core controlled vocabularies include customer intent families, rework bands (`0`, `1`, `2+`), sentiment trajectory (`Improved`, `Worsened`, `Unchanged`), and root-cause families.
+
 ## Supported Tasks
 
 - Structured information extraction from support transcripts
@@ -101,6 +110,10 @@ For Hugging Face release, publish explicit split files:
 ### Source Data
 
 This project primarily uses synthetic logistics support conversations and synthetic labels generated through controlled prompting and schema validation.
+
+Synthetic generation models used in this repository:
+- Transcript generation: `gpt-4o-mini` (`src/data_factory.py`)
+- Schema-constrained label extraction: `gpt-4o-mini` (`src/extractor.py`)
 
 ### Knowledge-Source Derivation (Important)
 

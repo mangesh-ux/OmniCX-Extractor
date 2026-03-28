@@ -50,6 +50,14 @@ These are mapped into `LogisticsCXMetrics` and enforced during data prep, traini
 Canonical taxonomy and rubric spec:
 - `docs/taxonomy.md`
 
+### Synthetic Data Generation Models
+
+Synthetic data creation pipeline (`src/data_factory.py`) currently uses:
+- **Transcript generation model:** `gpt-4o-mini`
+- **Label extraction model (schema-constrained):** `gpt-4o-mini` via `src/extractor.py`
+
+These model choices apply to the synthetic training data generation flow in this repository and should be updated in docs/cards if changed in future iterations.
+
 ### Taxonomy Overview
 
 `LogisticsCXMetrics` contains three top-level groups:
