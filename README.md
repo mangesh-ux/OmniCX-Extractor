@@ -220,6 +220,20 @@ python scripts/upload_dataset_hf.py --repo mangesh-ux/logistics-cx-transcript-an
 # python scripts/publish_hf_artifacts.py --dataset-repo ... --model-repo ...
 ```
 
+### HF API Smoke Test
+
+Run this to verify model + dataset Hub APIs are healthy before/after publish:
+
+```bash
+python scripts/smoke_test_hf_apis.py
+```
+
+What it validates:
+- model metadata + required files
+- dataset metadata + required files
+- small-file downloadability
+- dataset splits endpoint (`train` / `test`) from datasets-server
+
 ## Roadmap (Near-Term)
 
 - Improve strict schema-level accuracy with more diverse labeled samples
