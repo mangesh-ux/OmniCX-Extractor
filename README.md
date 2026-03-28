@@ -27,16 +27,17 @@ Most pipelines optimize for one side. OmniCX Extractor is built to capture both 
 - **Training samples:** 486
 - **Eval samples:** 32 (cleaned, parse-valid)
 - **Strict exact-match accuracy:** 0.0% (0/32)
-- **Mean latency:** 22.35s per example
+- **Mean latency:** 29.84s per example
 
 Detailed artifacts:
 - `docs/training_logs/iteration_001.md`
 - `docs/training_logs/eval_report_iteration_001.md`
 - `docs/training_logs/eval_outputs_iteration_001.jsonl`
 
-## Published Artifact
+## Published Artifacts
 
 - Hugging Face dataset (research preview): [mangesh-ux/logistics-cx-transcript-analysis-chatml](https://huggingface.co/datasets/mangesh-ux/logistics-cx-transcript-analysis-chatml)
+- Hugging Face model (research preview): [mangesh-ux/omnicx-logistics-cx-extractor-qwen25-3b-lora](https://huggingface.co/mangesh-ux/omnicx-logistics-cx-extractor-qwen25-3b-lora)
 
 ## Knowledge-Grounded Schema
 
@@ -48,6 +49,24 @@ These are mapped into `LogisticsCXMetrics` and enforced during data prep, traini
 
 Canonical taxonomy and rubric spec:
 - `docs/taxonomy.md`
+
+### Taxonomy Overview
+
+`LogisticsCXMetrics` contains three top-level groups:
+- **`behavioral_analytics`**: customer intent, effort (`1-5` CES-like rubric), sentiment trajectory, rework frequency, and direct friction quotes.
+- **`operational_analytics`**: exception diagnosis, `delivery_exception_type`, `root_cause_category`, deterministic operational flags, and explicit resolution state.
+- **`diagnostic_reasoning`**: auditable reasoning text (`intent_reasoning`, `exception_reasoning`, `effort_reasoning`) plus recommended routing queue.
+
+Key controlled vocabularies include:
+- **Intent taxonomy**: `WISMO_Standard`, `Address_Modification`, `Proof_of_Delivery_Dispute`, `Damage_Claim_Initiation`, `Lost_in_Transit_Investigation`, etc.
+- **Rework taxonomy**: `0`, `1`, `2+` repetition bands.
+- **Sentiment trajectory taxonomy**: `Improved`, `Worsened`, `Unchanged`.
+- **Root-cause families**: Address/Recipient, Environmental/Force Majeure, Operational/Mechanical/Technological, Documentation/Labeling, Hazmat, Unknown.
+
+Default ambiguity policy:
+- Use `Unknown / Not Explicitly Stated` when exception evidence is insufficient.
+- Use `Unknown / Not Applicable` when root cause cannot be grounded in transcript evidence.
+- Set `agent_explicitly_confirmed_resolution = true` only when explicitly confirmed in the interaction.
 
 ## Repository Layout
 
