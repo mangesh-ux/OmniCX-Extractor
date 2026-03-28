@@ -1,3 +1,5 @@
+## Hugging Face
+hf_release/
 # Secrets
 .env
 openai_api_key.txt
